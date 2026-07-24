@@ -1,0 +1,14 @@
+.artly-app {
+  background-image:
+    radial-gradient(circle at 8% 4%, rgb(255 237 213 / 0.7), transparent 22rem),
+    linear-gradient(rgb(120 113 108 / 0.045) 1px, transparent 1px);
+  background-size:
+    auto,
+    100% 3rem;
+}
+
+.artly-mark {
+  box-shadow:
+    0 0 0 3px #fffdf9,
+    0 0 0 4px #fdba74;
+}
