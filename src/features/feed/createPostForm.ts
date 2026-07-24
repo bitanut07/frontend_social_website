@@ -1,4 +1,4 @@
-import type { CreatePostInput } from '../../types/api'
+import type { CreatePostInput, ResourceId } from '../../types/api'
 
 export const MAX_SELECTED_TOPICS = 5
 
@@ -7,7 +7,7 @@ export interface CreatePostDraft {
   caption: string
   imageUrl: string
   examName: string
-  topicIds: number[]
+  topicIds: ResourceId[]
 }
 
 export type CreatePostErrors = Partial<

@@ -1,6 +1,7 @@
 import { LoaderCircle, Send, X } from 'lucide-react'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import type { ResourceId } from '../../types/api'
 import {
   emptyCreatePostDraft,
   toCreatePostInput,
@@ -59,7 +60,7 @@ export function CreatePostDialog({
     }))
   }
 
-  const toggleTopic = (topicId: number) => {
+  const toggleTopic = (topicId: ResourceId) => {
     setDraft((current) => {
       const selected = current.topicIds.includes(topicId)
       return {

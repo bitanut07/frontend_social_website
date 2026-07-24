@@ -52,6 +52,17 @@ export function EmptyFeed() {
 - Mobile-first; kiểm tra ở 320, 768, 1024 và 1440 px.
 - Nút icon luôn có accessible name; form luôn có label.
 
+## Hợp đồng ID với backend
+
+- `ResourceId` là chuỗi UUID cho user, topic, post và message; áp dụng cho JSON,
+  `X-User-ID`, path và query.
+- Ví dụ danh tính seed:
+  `X-User-ID: 00000000-0000-4000-8000-000000000001`.
+- Không dùng `number`, `parseInt` hoặc phép toán số cho ID. Các trường phân trang,
+  số reaction, kết quả đếm và status HTTP vẫn là số.
+- Backend dùng PostgreSQL 17 với cột PK/FK kiểu `UUID`. Frontend không truy cập
+  database trực tiếp.
+
 ## Kiểm thử
 
 - Unit test cho parser/formatter và API error handling.
@@ -77,5 +88,5 @@ export function EmptyFeed() {
 
 ## Câu hỏi mở đã chốt cho MVP
 
-- Dùng MySQL 8, tuyệt đối không dùng PostgreSQL.
+- Backend dùng PostgreSQL 17; frontend chỉ giao tiếp qua Artly API v1.
 - Chưa làm auth và upload ảnh production; dùng tài khoản/URL mẫu.

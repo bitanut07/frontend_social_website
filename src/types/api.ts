@@ -1,4 +1,4 @@
-export type ResourceId = number
+export type ResourceId = string
 
 export type UserRole = 'STUDENT' | 'TEACHER'
 

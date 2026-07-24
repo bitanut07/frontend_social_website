@@ -1,4 +1,4 @@
-import type { Topic } from '../../types/api'
+import type { ResourceId, Topic } from '../../types/api'
 import {
   MAX_SELECTED_TOPICS,
   type CreatePostErrors,
@@ -7,10 +7,10 @@ import { CreatePostFieldError } from './CreatePostField'
 
 interface PostTopicSelectorProps {
   topics: Topic[]
-  selectedTopicIds: number[]
+  selectedTopicIds: ResourceId[]
   error?: CreatePostErrors['topicIds']
   busy: boolean
-  onToggle: (topicId: number) => void
+  onToggle: (topicId: ResourceId) => void
 }
 
 export function PostTopicSelector({

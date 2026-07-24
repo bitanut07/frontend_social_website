@@ -12,19 +12,24 @@ import type { Post, Topic } from '../../types/api'
 import { Feed } from './Feed'
 import type { FeedProps } from './feedTypes'
 
+const USER_ID_1 = '00000000-0000-4000-8000-000000000001'
+const TOPIC_ID_1 = '10000000-0000-4000-8000-000000000001'
+const TOPIC_ID_2 = '10000000-0000-4000-8000-000000000002'
+const POST_ID_1 = '20000000-0000-4000-8000-000000000001'
+
 const topics: Topic[] = [
-  { id: 1, slug: 'thien-nhien', name: 'Thiên nhiên' },
-  { id: 2, slug: 'truong-hoc', name: 'Trường học' },
+  { id: TOPIC_ID_1, slug: 'thien-nhien', name: 'Thiên nhiên' },
+  { id: TOPIC_ID_2, slug: 'truong-hoc', name: 'Trường học' },
 ]
 
 const post: Post = {
-  id: 101,
+  id: POST_ID_1,
   title: 'Bình minh',
   caption: 'Một buổi sáng nhiều màu sắc.',
   imageUrl: 'https://example.com/binh-minh.jpg',
   examName: 'Sắc màu quê hương',
   author: {
-    id: 7,
+    id: USER_ID_1,
     username: 'minh-anh',
     displayName: 'Minh Anh',
     role: 'STUDENT',
@@ -217,7 +222,7 @@ describe('Feed', () => {
         caption: 'Bức tranh về một khu vườn xanh.',
         imageUrl: 'https://example.com/mam-xanh.jpg',
         examName: 'Ngày hội sắc màu',
-        topicIds: [1, 2],
+        topicIds: [TOPIC_ID_1, TOPIC_ID_2],
       })
     })
     expect(onCreatePost).toHaveBeenCalledOnce()

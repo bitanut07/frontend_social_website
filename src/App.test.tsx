@@ -18,15 +18,20 @@ vi.mock('./lib/api', () => ({
   api: apiMock,
 }))
 
+const USER_ID_1 = '00000000-0000-4000-8000-000000000001'
+const USER_ID_2 = '00000000-0000-4000-8000-000000000002'
+const TOPIC_ID_3 = '10000000-0000-4000-8000-000000000003'
+const POST_ID_1 = '20000000-0000-4000-8000-000000000001'
+
 const users = [
   {
-    id: 1,
+    id: USER_ID_1,
     username: 'minh.an',
     displayName: 'Trần Minh An',
     role: 'STUDENT' as const,
   },
   {
-    id: 2,
+    id: USER_ID_2,
     username: 'co.lan',
     displayName: 'Cô Nguyễn Hoài Lan',
     role: 'TEACHER' as const,
@@ -35,7 +40,7 @@ const users = [
 
 const topics = [
   {
-    id: 3,
+    id: TOPIC_ID_3,
     slug: 'moi-truong',
     name: 'Môi trường',
     aliases: ['bảo vệ môi trường'],
@@ -43,7 +48,7 @@ const topics = [
 ]
 
 const firstPost = {
-  id: 1,
+  id: POST_ID_1,
   title: 'Mầm xanh tương lai',
   caption: 'Bài thi vẽ về môi trường.',
   imageUrl: 'http://localhost:5173/demo-art/mam-xanh-tuong-lai.png',
@@ -96,18 +101,18 @@ describe('App', () => {
       screen.getByRole('heading', { level: 1, name: 'Artly' }),
     ).toBeInTheDocument()
     expect(await screen.findByText('Mầm xanh tương lai')).toBeVisible()
-    expect(apiMock.listPosts).toHaveBeenCalledWith(1, {
+    expect(apiMock.listPosts).toHaveBeenCalledWith(USER_ID_1, {
       page: 1,
       pageSize: 10,
     })
 
     await user.selectOptions(
       screen.getByRole('combobox', { name: 'Tài khoản demo' }),
-      '2',
+      USER_ID_2,
     )
 
     await waitFor(() => {
-      expect(apiMock.listPosts).toHaveBeenLastCalledWith(2, {
+      expect(apiMock.listPosts).toHaveBeenLastCalledWith(USER_ID_2, {
         page: 1,
         pageSize: 10,
       })
@@ -140,7 +145,7 @@ describe('App', () => {
       await screen.findByText('Hiện có 1 bài viết về chủ đề “Môi trường”.'),
     ).toBeVisible()
     expect(apiMock.askAssistant).toHaveBeenCalledWith(
-      1,
+      USER_ID_1,
       'Có bao nhiêu bài về chủ đề môi trường?',
     )
   })

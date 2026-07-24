@@ -4,6 +4,15 @@ import {
   ApiError,
   createApiClient,
 } from './api'
+import type { ResourceId } from '../types/api'
+
+const USER_1: ResourceId = '00000000-0000-4000-8000-000000000001'
+const USER_2: ResourceId = '00000000-0000-4000-8000-000000000002'
+const USER_3: ResourceId = '00000000-0000-4000-8000-000000000003'
+const TOPIC_1: ResourceId = '10000000-0000-4000-8000-000000000001'
+const TOPIC_2: ResourceId = '10000000-0000-4000-8000-000000000002'
+const POST_1: ResourceId = '20000000-0000-4000-8000-000000000001'
+const MESSAGE_1: ResourceId = '50000000-0000-4000-8000-000000000001'
 
 function jsonResponse(body: unknown, init: ResponseInit = {}) {
   return new Response(JSON.stringify(body), {
@@ -70,15 +79,19 @@ describe('Artly API client', () => {
     )
 
     const client = createApiClient({ baseUrl: 'https://artly.test/api/v1/' })
-    await client.listPosts(7, { page: 3, pageSize: 10, topicId: 2 })
+    await client.listPosts(USER_1, {
+      page: 3,
+      pageSize: 10,
+      topicId: TOPIC_2,
+    })
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://artly.test/api/v1/posts?page=3&pageSize=10&topicId=2',
+      `https://artly.test/api/v1/posts?page=3&pageSize=10&topicId=${TOPIC_2}`,
       expect.objectContaining({
         method: 'GET',
         headers: expect.objectContaining({
           Accept: 'application/json',
-          'X-User-ID': '7',
+          'X-User-ID': USER_1,
         }),
       }),
     )
@@ -86,12 +99,12 @@ describe('Artly API client', () => {
 
   it('tạo bài viết bằng JSON và trả về post đã bỏ lớp data', async () => {
     const createdPost = {
-      id: 18,
+      id: POST_1,
       title: 'Buổi sáng trên cánh đồng',
       caption: 'Bài dự thi màu nước.',
       imageUrl: 'https://images.example.com/art/canh-dong.jpg',
       author: {
-        id: 1,
+        id: USER_1,
         username: 'linh.ve',
         displayName: 'Nguyễn Gia Linh',
         role: 'STUDENT',
@@ -105,14 +118,14 @@ describe('Artly API client', () => {
       title: createdPost.title,
       caption: createdPost.caption,
       imageUrl: createdPost.imageUrl,
-      topicIds: [2],
+      topicIds: [TOPIC_2],
     }
     fetchMock.mockResolvedValueOnce(
       jsonResponse({ data: createdPost }, { status: 201 }),
     )
 
     const client = createApiClient({ baseUrl: 'https://artly.test/api/v1' })
-    const result = await client.createPost(1, input)
+    const result = await client.createPost(USER_1, input)
 
     expect(fetchMock).toHaveBeenCalledWith(
       'https://artly.test/api/v1/posts',
@@ -120,7 +133,7 @@ describe('Artly API client', () => {
         method: 'POST',
         headers: expect.objectContaining({
           'Content-Type': 'application/json',
-          'X-User-ID': '1',
+          'X-User-ID': USER_1,
         }),
         body: JSON.stringify(input),
       }),
@@ -144,13 +157,13 @@ describe('Artly API client', () => {
       )
 
       const client = createApiClient({ baseUrl: 'https://artly.test/api/v1' })
-      const result = await client.setPostReaction(4, 18, reacted)
+      const result = await client.setPostReaction(USER_3, POST_1, reacted)
 
       expect(fetchMock).toHaveBeenCalledWith(
-        'https://artly.test/api/v1/posts/18/reaction',
+        `https://artly.test/api/v1/posts/${POST_1}/reaction`,
         expect.objectContaining({
           method,
-          headers: expect.objectContaining({ 'X-User-ID': '4' }),
+          headers: expect.objectContaining({ 'X-User-ID': USER_3 }),
         }),
       )
       expect(result.viewerHasReacted).toBe(reacted)
@@ -159,15 +172,15 @@ describe('Artly API client', () => {
 
   it('lấy hội thoại với peerId và gửi tin nhắn', async () => {
     const message = {
-      id: 36,
+      id: MESSAGE_1,
       sender: {
-        id: 1,
+        id: USER_1,
         username: 'linh.ve',
         displayName: 'Nguyễn Gia Linh',
         role: 'STUDENT',
       },
       receiver: {
-        id: 2,
+        id: USER_2,
         username: 'co.mai',
         displayName: 'Cô Mai Anh',
         role: 'TEACHER',
@@ -192,30 +205,30 @@ describe('Artly API client', () => {
       )
 
     const client = createApiClient({ baseUrl: 'https://artly.test/api/v1' })
-    const conversation = await client.listMessages(1, {
-      peerId: 2,
+    const conversation = await client.listMessages(USER_1, {
+      peerId: USER_2,
       page: 1,
       pageSize: 50,
     })
-    const sent = await client.sendMessage(1, {
-      recipientId: 2,
+    const sent = await client.sendMessage(USER_1, {
+      recipientId: USER_2,
       body: message.body,
     })
 
     expect(fetchMock.mock.calls[0]).toEqual([
-      'https://artly.test/api/v1/messages?peerId=2&page=1&pageSize=50',
+      `https://artly.test/api/v1/messages?peerId=${USER_2}&page=1&pageSize=50`,
       expect.objectContaining({
         method: 'GET',
-        headers: expect.objectContaining({ 'X-User-ID': '1' }),
+        headers: expect.objectContaining({ 'X-User-ID': USER_1 }),
       }),
     ])
     expect(fetchMock.mock.calls[1]).toEqual([
       'https://artly.test/api/v1/messages',
       expect.objectContaining({
         method: 'POST',
-        headers: expect.objectContaining({ 'X-User-ID': '1' }),
+        headers: expect.objectContaining({ 'X-User-ID': USER_1 }),
         body: JSON.stringify({
-          recipientId: 2,
+          recipientId: USER_2,
           body: message.body,
         }),
       }),
@@ -233,7 +246,7 @@ describe('Artly API client', () => {
       result: {
         count: 8,
         topic: {
-          id: 2,
+          id: TOPIC_2,
           slug: 'phong-canh',
           name: 'Phong cảnh',
           aliases: ['cảnh vật'],
@@ -244,7 +257,7 @@ describe('Artly API client', () => {
 
     const client = createApiClient({ baseUrl: 'https://artly.test/api/v1' })
     const result = await client.askAssistant(
-      1,
+      USER_1,
       'Có bao nhiêu bài nói về chủ đề phong cảnh?',
     )
 
@@ -252,7 +265,7 @@ describe('Artly API client', () => {
       'https://artly.test/api/v1/assistant/questions',
       expect.objectContaining({
         method: 'POST',
-        headers: expect.objectContaining({ 'X-User-ID': '1' }),
+        headers: expect.objectContaining({ 'X-User-ID': USER_1 }),
         body: JSON.stringify({
           question: 'Có bao nhiêu bài nói về chủ đề phong cảnh?',
         }),
@@ -281,11 +294,11 @@ describe('Artly API client', () => {
     )
 
     const client = createApiClient({ baseUrl: 'https://artly.test/api/v1' })
-    const request = client.createPost(1, {
+    const request = client.createPost(USER_1, {
       title: 'Bài vẽ',
       caption: '',
       imageUrl: 'https://images.example.com/art.jpg',
-      topicIds: [1],
+      topicIds: [TOPIC_1],
     })
 
     await expect(request).rejects.toMatchObject({

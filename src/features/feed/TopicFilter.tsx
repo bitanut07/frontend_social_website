@@ -1,9 +1,9 @@
-import type { Topic } from '../../types/api'
+import type { ResourceId, Topic } from '../../types/api'
 
 interface TopicFilterProps {
   topics: Topic[]
-  selectedTopicId: number | null
-  onChange: (topicId: number | null) => void
+  selectedTopicId: ResourceId | null
+  onChange: (topicId: ResourceId | null) => void
 }
 
 export function TopicFilter({

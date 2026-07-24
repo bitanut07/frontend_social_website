@@ -1,6 +1,6 @@
 import { MessageCircle } from 'lucide-react'
 import { useId } from 'react'
-import type { Message, User } from '../../types/api'
+import type { Message, ResourceId, User } from '../../types/api'
 import { ChatComposer } from './ChatComposer'
 import { ConversationContent } from './ConversationContent'
 import { UserAvatar } from './UserAvatar'
@@ -8,14 +8,14 @@ import { UserAvatar } from './UserAvatar'
 export interface ChatPanelProps {
   currentUser: User
   peers: User[]
-  selectedPeerId: number | null
+  selectedPeerId: ResourceId | null
   messages: Message[]
   draft: string
   isLoading?: boolean
   isSending?: boolean
   error?: string | null
   sendError?: string | null
-  onSelectPeer: (peerId: number) => void
+  onSelectPeer: (peerId: ResourceId) => void
   onDraftChange: (value: string) => void
   onSend: () => void
   onRetry?: () => void
@@ -73,7 +73,7 @@ export function ChatPanel({
           className="mt-1.5 min-h-11 w-full border border-slate-300 bg-white px-3 text-sm text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-100"
           disabled={availablePeers.length === 0}
           value={selectedPeerId ?? ''}
-          onChange={(event) => onSelectPeer(Number(event.target.value))}
+          onChange={(event) => onSelectPeer(event.target.value)}
         >
           <option disabled value="">
             {availablePeers.length === 0

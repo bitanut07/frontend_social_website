@@ -155,7 +155,7 @@ export function createApiClient(
     }
 
     if (userId !== undefined) {
-      headers['X-User-ID'] = String(userId)
+      headers['X-User-ID'] = userId
     }
 
     const requestInit: RequestInit = {

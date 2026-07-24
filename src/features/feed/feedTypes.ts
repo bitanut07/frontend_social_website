@@ -1,14 +1,22 @@
-import type { CreatePostInput, Post, Topic } from '../../types/api'
+import type {
+  CreatePostInput,
+  Post,
+  ResourceId,
+  Topic,
+} from '../../types/api'
 
 export type FeedActionResult = void | Promise<unknown>
 
 export interface FeedProps {
   posts: Post[]
   topics: Topic[]
-  selectedTopicId: number | null
-  onTopicChange: (topicId: number | null) => void
+  selectedTopicId: ResourceId | null
+  onTopicChange: (topicId: ResourceId | null) => void
   onCreatePost: (input: CreatePostInput) => FeedActionResult
-  onToggleReaction: (postId: number, reacted: boolean) => FeedActionResult
+  onToggleReaction: (
+    postId: ResourceId,
+    reacted: boolean,
+  ) => FeedActionResult
   isLoading?: boolean
   error?: string | null
   onRetry?: () => FeedActionResult
@@ -20,7 +28,10 @@ export interface FeedProps {
 
 export interface PostCardProps {
   post: Post
-  onToggleReaction: (postId: number, reacted: boolean) => FeedActionResult
+  onToggleReaction: (
+    postId: ResourceId,
+    reacted: boolean,
+  ) => FeedActionResult
 }
 
 export interface CreatePostDialogProps {

@@ -18,6 +18,7 @@ import type {
   Message,
   Pagination,
   Post,
+  ResourceId,
   Topic,
   User,
 } from './types/api'
@@ -26,6 +27,8 @@ const POSTS_PER_PAGE = 10
 const MESSAGES_PER_PAGE = 50
 const MESSAGE_POLL_INTERVAL = 5_000
 const MESSAGE_REQUEST_TIMEOUT = 10_000
+const DEFAULT_USER_ID: ResourceId =
+  '00000000-0000-4000-8000-000000000001'
 
 type ActiveView = 'feed' | 'messages'
 
@@ -58,12 +61,14 @@ export function App() {
   const [activeView, setActiveView] = useState<ActiveView>('feed')
   const [users, setUsers] = useState<User[]>([])
   const [topics, setTopics] = useState<Topic[]>([])
-  const [selectedUserId, setSelectedUserId] = useState(1)
+  const [selectedUserId, setSelectedUserId] =
+    useState<ResourceId>(DEFAULT_USER_ID)
   const [directoryLoading, setDirectoryLoading] = useState(true)
   const [directoryError, setDirectoryError] = useState<string | null>(null)
   const [directoryReload, setDirectoryReload] = useState(0)
 
-  const [selectedTopicId, setSelectedTopicId] = useState<number | null>(null)
+  const [selectedTopicId, setSelectedTopicId] =
+    useState<ResourceId | null>(null)
   const [posts, setPosts] = useState<Post[]>([])
   const [postPagination, setPostPagination] = useState<Pagination | null>(null)
   const [feedLoading, setFeedLoading] = useState(true)
@@ -72,7 +77,8 @@ export function App() {
   const [feedReload, setFeedReload] = useState(0)
   const [creatingPost, setCreatingPost] = useState(false)
 
-  const [selectedPeerId, setSelectedPeerId] = useState<number | null>(null)
+  const [selectedPeerId, setSelectedPeerId] =
+    useState<ResourceId | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [messageDraft, setMessageDraft] = useState('')
   const [messagesLoading, setMessagesLoading] = useState(false)
@@ -391,7 +397,10 @@ export function App() {
     }
   }
 
-  async function handleToggleReaction(postId: number, reacted: boolean) {
+  async function handleToggleReaction(
+    postId: ResourceId,
+    reacted: boolean,
+  ) {
     const requestGeneration = feedGenerationRef.current
     const requestUserId = selectedUserId
     const requestTopicId = selectedTopicId
@@ -545,7 +554,7 @@ export function App() {
               id="demo-user"
               value={selectedUserId}
               onChange={(event) => {
-                const nextUserId = Number(event.target.value)
+                const nextUserId = event.target.value
                 selectedUserIdRef.current = nextUserId
                 messageSendVersionRef.current += 1
                 setMessageSending(false)

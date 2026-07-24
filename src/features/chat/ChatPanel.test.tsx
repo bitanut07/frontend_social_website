@@ -4,15 +4,20 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Message, User } from '../../types/api'
 import { ChatPanel } from './ChatPanel'
 
+const USER_ID_1 = '00000000-0000-4000-8000-000000000001'
+const USER_ID_2 = '00000000-0000-4000-8000-000000000002'
+const MESSAGE_ID_1 = '50000000-0000-4000-8000-000000000001'
+const MESSAGE_ID_2 = '50000000-0000-4000-8000-000000000002'
+
 const student: User = {
-  id: 1,
+  id: USER_ID_1,
   username: 'linh.ve',
   displayName: 'Nguyễn Gia Linh',
   role: 'STUDENT',
 }
 
 const teacher: User = {
-  id: 2,
+  id: USER_ID_2,
   username: 'co.mai',
   displayName: 'Cô Mai Anh',
   role: 'TEACHER',
@@ -20,14 +25,14 @@ const teacher: User = {
 
 const messages: Message[] = [
   {
-    id: 2,
+    id: MESSAGE_ID_2,
     sender: student,
     receiver: teacher,
     body: 'Em cảm ơn cô ạ.',
     createdAt: '2026-07-24T09:12:00+07:00',
   },
   {
-    id: 1,
+    id: MESSAGE_ID_1,
     sender: teacher,
     receiver: student,
     body: 'Em thử tăng độ tương phản nhé.',

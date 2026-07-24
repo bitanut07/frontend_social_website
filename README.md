@@ -57,14 +57,19 @@ Sau khi nạp `sql.sql` của backend, có thể chọn một trong ba danh tín
 
 | ID dùng cho `X-User-ID` | Tài khoản | Tên hiển thị | Vai trò |
 | --- | --- | --- | --- |
-| `1` | `minh.an` | Trần Minh An | Học sinh |
-| `2` | `co.lan` | Cô Nguyễn Hoài Lan | Giáo viên |
-| `3` | `phuong.thao` | Nguyễn Phương Thảo | Học sinh |
+| `00000000-0000-4000-8000-000000000001` | `minh.an` | Trần Minh An | Học sinh |
+| `00000000-0000-4000-8000-000000000002` | `co.lan` | Cô Nguyễn Hoài Lan | Giáo viên |
+| `00000000-0000-4000-8000-000000000003` | `phuong.thao` | Nguyễn Phương Thảo | Học sinh |
 
 Seed còn có sáu chủ đề (Phong cảnh, Chân dung, Môi trường, Hòa bình, Di sản văn
 hóa và Ước mơ), năm bài đăng, sáu reaction và bốn tin nhắn. Ba bài dùng ảnh demo
 cục bộ là “Mầm xanh tương lai”, “Hòa bình trong em” và “Di sản quê em”. Danh
 sách thực tế luôn được tải từ backend thay vì ghi cứng trong giao diện.
+
+Backend và frontend trao đổi mọi ID tài nguyên dưới dạng chuỗi UUID. Seed dùng
+UUID cố định, còn dữ liệu tạo mới có UUID ngẫu nhiên. Không ép ID sang số. Nếu
+Supabase vẫn còn schema demo `BIGINT` cũ, hãy backup rồi làm theo mục reset UUID
+trong README của backend; chạy lại `sql.sql` không tự đổi kiểu cột cũ.
 
 Ba ảnh minh họa vuông được tạo riêng cho bản demo nằm trong
 `public/demo-art/`:
@@ -103,9 +108,13 @@ npm run lint && npm test -- --run && npm run build
 ## Kết nối API
 
 Frontend dùng Fetch API và hợp đồng JSON camelCase. API client tự gửi
-`X-User-ID: <id>` của tài khoản mẫu đang chọn cho bảng tin, thao tác ghi,
+`X-User-ID: <uuid>` của tài khoản mẫu đang chọn cho bảng tin, thao tác ghi,
 tin nhắn và trợ lý. Hai endpoint danh mục `GET /users` và `GET /topics` không
 cần header này.
+
+Các trường `id`, `topicId`, `topicIds`, `peerId` và `recipientId` là UUID string;
+`page`, `pageSize`, `totalItems`, `totalPages`, `reactionCount` và kết quả đếm
+vẫn là number.
 
 | Chức năng | Endpoint |
 | --- | --- |
