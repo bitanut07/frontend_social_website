@@ -1,19 +1,27 @@
 import type {
+  AssistantConversation,
+  AssistantConversationListResponse,
   AssistantQuestionInput,
   AssistantResponse,
   CreateMessageInput,
+  CreatePostCommentInput,
   CreatePostInput,
   DataResponse,
+  DemoLoginInput,
   Message,
   MessageListParams,
   MessageListResponse,
   PaginationParams,
   Post,
+  PostComment,
+  PostCommentListResponse,
   PostListParams,
   PostListResponse,
   ReactionState,
   ResourceId,
   TopicListResponse,
+  UpdateProfileInput,
+  User,
   UserListResponse,
 } from '../types/api'
 
@@ -51,13 +59,35 @@ export class ApiError extends Error {
 }
 
 export interface ApiClient {
+  loginDemo(input: DemoLoginInput): Promise<User>
   listUsers(params?: PaginationParams): Promise<UserListResponse>
+  updateProfile(
+    userId: ResourceId,
+    input: UpdateProfileInput,
+  ): Promise<User>
   listTopics(params?: PaginationParams): Promise<TopicListResponse>
   listPosts(
     userId: ResourceId,
     params?: PostListParams,
   ): Promise<PostListResponse>
   createPost(userId: ResourceId, input: CreatePostInput): Promise<Post>
+  listPostComments(
+    userId: ResourceId,
+    postId: ResourceId,
+    params?: PaginationParams,
+    signal?: AbortSignal,
+  ): Promise<PostCommentListResponse>
+  createPostComment(
+    userId: ResourceId,
+    postId: ResourceId,
+    input: CreatePostCommentInput,
+  ): Promise<PostComment>
+  deletePostComment(
+    userId: ResourceId,
+    postId: ResourceId,
+    commentId: ResourceId,
+  ): Promise<void>
+  deletePost(userId: ResourceId, postId: ResourceId): Promise<void>
   setPostReaction(
     userId: ResourceId,
     postId: ResourceId,
@@ -72,6 +102,14 @@ export interface ApiClient {
     userId: ResourceId,
     input: CreateMessageInput,
   ): Promise<Message>
+  listAssistantConversations(
+    userId: ResourceId,
+    params?: PaginationParams,
+  ): Promise<AssistantConversationListResponse>
+  getAssistantConversation(
+    userId: ResourceId,
+    conversationId: ResourceId,
+  ): Promise<AssistantConversation>
   askAssistant(
     userId: ResourceId,
     input: AssistantQuestionInput | string,
@@ -211,6 +249,14 @@ export function createApiClient(
   }
 
   return {
+    async loginDemo(input) {
+      const response = await request<DataResponse<User>>('/demo/sessions', {
+        method: 'POST',
+        body: input,
+      })
+      return response.data
+    },
+
     listUsers(params = {}) {
       return request<UserListResponse>(
         `/users${queryString({
@@ -235,18 +281,90 @@ export function createApiClient(
           page: params.page,
           pageSize: params.pageSize,
           topicId: params.topicId,
+          authorId: params.authorId,
         })}`,
         { userId },
       )
     },
 
+    async updateProfile(userId, input) {
+      if (input.avatarFile) {
+        throw new ApiError({
+          status: 0,
+          code: 'SUPABASE_STORAGE_REQUIRED',
+          message:
+            'Tải avatar từ file cần bật Supabase Storage. Vui lòng dùng backend Supabase.',
+          details: {},
+        })
+      }
+      const response = await request<DataResponse<User>>('/users/me', {
+        method: 'PUT',
+        userId,
+        body: {
+          username: input.username,
+          displayName: input.displayName,
+          avatarUrl: input.avatarUrl ?? null,
+        },
+      })
+      return response.data
+    },
+
     async createPost(userId, input) {
+      if (input.imageFile) {
+        throw new ApiError({
+          status: 0,
+          code: 'SUPABASE_STORAGE_REQUIRED',
+          message:
+            'Tải ảnh bài viết từ file cần bật backend Supabase Storage.',
+          details: {},
+        })
+      }
+
       const response = await request<DataResponse<Post>>('/posts', {
         method: 'POST',
         userId,
         body: input,
       })
       return response.data
+    },
+
+    listPostComments(userId, postId, params = {}, signal) {
+      return request<PostCommentListResponse>(
+        `/posts/${postId}/comments${queryString({
+          page: params.page,
+          pageSize: params.pageSize,
+        })}`,
+        { userId, signal },
+      )
+    },
+
+    async createPostComment(userId, postId, input) {
+      const response = await request<DataResponse<PostComment>>(
+        `/posts/${postId}/comments`,
+        {
+          method: 'POST',
+          userId,
+          body: { body: input.body },
+        },
+      )
+      return response.data
+    },
+
+    async deletePostComment(userId, postId, commentId) {
+      await request<void>(
+        `/posts/${postId}/comments/${commentId}`,
+        {
+          method: 'DELETE',
+          userId,
+        },
+      )
+    },
+
+    async deletePost(userId, postId) {
+      await request<void>(`/posts/${postId}`, {
+        method: 'DELETE',
+        userId,
+      })
     },
 
     async setPostReaction(userId, postId, reacted) {
@@ -272,11 +390,42 @@ export function createApiClient(
     },
 
     async sendMessage(userId, input) {
+      if (input.imageFile || input.imageUrl) {
+        throw new ApiError({
+          status: 0,
+          code: 'SUPABASE_STORAGE_REQUIRED',
+          message:
+            'Gửi ảnh trong tin nhắn cần bật backend Supabase Storage.',
+          details: {},
+        })
+      }
+
       const response = await request<DataResponse<Message>>('/messages', {
         method: 'POST',
         userId,
-        body: input,
+        body: {
+          recipientId: input.recipientId,
+          body: input.body ?? '',
+        },
       })
+      return response.data
+    },
+
+    listAssistantConversations(userId, params = {}) {
+      return request<AssistantConversationListResponse>(
+        `/assistant/conversations${queryString({
+          page: params.page,
+          pageSize: params.pageSize,
+        })}`,
+        { userId },
+      )
+    },
+
+    async getAssistantConversation(userId, conversationId) {
+      const response = await request<DataResponse<AssistantConversation>>(
+        `/assistant/conversations/${conversationId}`,
+        { userId },
+      )
       return response.data
     },
 

@@ -11,7 +11,6 @@ import {
 export type CreatePostTextField =
   | 'title'
   | 'caption'
-  | 'imageUrl'
   | 'examName'
 
 interface PostDetailsFieldsProps {

@@ -18,6 +18,11 @@ export function useDialogFocus(
   const dialogRef = useRef<HTMLDivElement>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
+  const onRequestCloseRef = useRef(onRequestClose)
+
+  useEffect(() => {
+    onRequestCloseRef.current = onRequestClose
+  }, [onRequestClose])
 
   useEffect(() => {
     if (!open) {
@@ -35,9 +40,16 @@ export function useDialogFocus(
     if (appRoot) {
       appRoot.inert = true
     }
+    const handleDocumentKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      onRequestCloseRef.current()
+    }
+    document.addEventListener('keydown', handleDocumentKeyDown)
     titleInputRef.current?.focus()
 
     return () => {
+      document.removeEventListener('keydown', handleDocumentKeyDown)
       document.body.style.overflow = previousOverflow
       if (appRoot) {
         appRoot.inert = appWasInert
@@ -56,12 +68,6 @@ export function useDialogFocus(
   const handleDialogKeyDown = (
     event: KeyboardEvent<HTMLDivElement>,
   ) => {
-    if (event.key === 'Escape') {
-      event.preventDefault()
-      onRequestClose()
-      return
-    }
-
     if (event.key !== 'Tab' || !dialogRef.current) {
       return
     }

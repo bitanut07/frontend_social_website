@@ -1,14 +1,53 @@
 .artly-app {
   background-image:
-    radial-gradient(circle at 8% 4%, rgb(255 237 213 / 0.7), transparent 22rem),
-    linear-gradient(rgb(120 113 108 / 0.045) 1px, transparent 1px);
+    radial-gradient(circle at 8% 4%, rgb(169 179 136 / 0.28), transparent 22rem),
+    radial-gradient(circle at 92% 28%, rgb(185 148 112 / 0.16), transparent 24rem),
+    linear-gradient(rgb(95 111 82 / 0.045) 1px, transparent 1px);
   background-size:
+    auto,
     auto,
     100% 3rem;
 }
 
 .artly-mark {
   box-shadow:
-    0 0 0 3px #fffdf9,
-    0 0 0 4px #fdba74;
+    0 0 0 3px #fefae0,
+    0 0 0 4px #a9b388;
+}
+
+.auth-canvas {
+  background-image:
+    radial-gradient(circle at 12% 18%, rgb(169 179 136 / 0.32), transparent 24rem),
+    radial-gradient(circle at 88% 82%, rgb(185 148 112 / 0.22), transparent 26rem);
+}
+
+.auth-brush-stroke {
+  position: absolute;
+  right: -8rem;
+  bottom: 14%;
+  width: 29rem;
+  height: 8rem;
+  transform: rotate(-18deg);
+  border-radius: 55% 35% 50% 38%;
+  background: rgb(169 179 136 / 26%);
+  filter: blur(1px);
+}
+
+.auth-brush-stroke::before,
+.auth-brush-stroke::after {
+  position: absolute;
+  content: '';
+  background: rgb(185 148 112 / 24%);
+}
+
+.auth-brush-stroke::before {
+  inset: -5rem 8rem auto -7rem;
+  height: 3.5rem;
+  transform: rotate(12deg);
+}
+
+.auth-brush-stroke::after {
+  inset: auto 3rem -5.5rem -3rem;
+  height: 2rem;
+  transform: rotate(-8deg);
 }

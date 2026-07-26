@@ -1,6 +1,10 @@
 import { LoaderCircle, Send } from 'lucide-react'
 import { useId } from 'react'
-import type { FormEvent, RefObject } from 'react'
+import type {
+  FormEvent,
+  KeyboardEvent,
+  RefObject,
+} from 'react'
 
 interface AssistantQuestionFormProps {
   inputRef: RefObject<HTMLTextAreaElement | null>
@@ -28,36 +32,57 @@ export function AssistantQuestionForm({
     }
   }
 
+  function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault()
+      if (canSubmit) {
+        onSubmit()
+      }
+    }
+  }
+
   return (
     <form
       aria-label="Đặt câu hỏi cho trợ lý"
-      className="border-t border-slate-200 bg-white px-4 py-4"
+      className="border-t border-slate-200 bg-white px-3 py-3 sm:px-4"
       onSubmit={handleSubmit}
     >
       <label
-        className="block text-xs font-semibold text-slate-700"
+        className="sr-only"
         htmlFor={inputId}
       >
-        Câu hỏi của bạn
+        Nhắn tin cho Trợ lý Artly
       </label>
-      <textarea
-        ref={inputRef}
-        id={inputId}
-        className="mt-1.5 min-h-20 w-full resize-y border border-slate-300 px-3 py-2.5 text-sm leading-5 text-slate-950 placeholder:text-slate-400 disabled:cursor-not-allowed disabled:bg-slate-100"
-        disabled={isLoading}
-        maxLength={500}
-        placeholder="Ví dụ: Có bao nhiêu bài về chủ đề chân dung?"
-        rows={3}
-        value={question}
-        onChange={(event) => onQuestionChange(event.target.value)}
-      />
-      <div className="mt-2 flex items-center justify-between gap-3">
-        <span className="text-xs tabular-nums text-slate-500">
-          {question.length}/500
-        </span>
+      <div className="flex items-end gap-2">
+        <div className="min-w-0 flex-1">
+          <textarea
+            ref={inputRef}
+            aria-describedby={`${inputId}-count`}
+            id={inputId}
+            className="max-h-28 min-h-11 w-full resize-none rounded-3xl border border-slate-300 bg-slate-100 px-4 py-2.5 text-sm leading-5 text-slate-950 outline-none transition placeholder:text-slate-500 focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-200"
+            maxLength={500}
+            placeholder="Hỏi Artly bất cứ điều gì…"
+            rows={1}
+            value={question}
+            onChange={(event) => onQuestionChange(event.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+          <span
+            className={
+              question.length >= 450
+                ? 'mt-1 block px-2 text-right text-xs tabular-nums text-slate-500'
+                : 'sr-only'
+            }
+            id={`${inputId}-count`}
+          >
+            {question.length}/500 ký tự
+          </span>
+        </div>
         <button
-          className="inline-flex min-h-10 items-center gap-2 bg-orange-700 px-4 text-sm font-bold text-white transition hover:bg-orange-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+          aria-label={isLoading ? 'Artly đang trả lời' : 'Gửi tin nhắn'}
+          className="grid size-11 shrink-0 place-items-center rounded-full bg-orange-700 text-white transition hover:bg-orange-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-700 disabled:cursor-not-allowed disabled:bg-slate-300"
           disabled={!canSubmit}
+          title={isLoading ? 'Artly đang trả lời' : 'Gửi'}
           type="submit"
         >
           {isLoading ? (
@@ -69,9 +94,11 @@ export function AssistantQuestionForm({
           ) : (
             <Send aria-hidden="true" size={17} />
           )}
-          {isLoading ? 'Đang hỏi' : 'Gửi câu hỏi'}
         </button>
       </div>
+      <p className="mt-1.5 px-2 text-[0.7rem] text-slate-500">
+        Enter để gửi · Shift + Enter để xuống dòng
+      </p>
     </form>
   )
 }

@@ -22,5 +22,6 @@ export type {
   CreatePostDialogProps,
   FeedActionResult,
   FeedProps,
+  PostImageInputMode,
   PostCardProps,
 } from './feedTypes'

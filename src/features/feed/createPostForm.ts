@@ -1,10 +1,18 @@
 import type { CreatePostInput, ResourceId } from '../../types/api'
+import type { PostImageInputMode } from './feedTypes'
 
 export const MAX_SELECTED_TOPICS = 5
+export const MAX_POST_IMAGE_BYTES = 50 * 1024 * 1024
+export const POST_IMAGE_MIME_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+] as const
 
 export interface CreatePostDraft {
   title: string
   caption: string
+  imageFile: File | null
   imageUrl: string
   examName: string
   topicIds: ResourceId[]
@@ -17,6 +25,7 @@ export type CreatePostErrors = Partial<
 export const emptyCreatePostDraft: CreatePostDraft = {
   title: '',
   caption: '',
+  imageFile: null,
   imageUrl: '',
   examName: '',
   topicIds: [],
@@ -33,11 +42,11 @@ export function isHttpImageUrl(value: string): boolean {
 
 export function validateCreatePost(
   draft: CreatePostDraft,
+  imageInputMode: PostImageInputMode = 'upload',
 ): CreatePostErrors {
   const errors: CreatePostErrors = {}
   const title = draft.title.trim()
   const caption = draft.caption.trim()
-  const imageUrl = draft.imageUrl.trim()
   const examName = draft.examName.trim()
 
   if (!title) {
@@ -52,12 +61,28 @@ export function validateCreatePost(
     errors.caption = 'Mô tả không được vượt quá 2.000 ký tự.'
   }
 
-  if (!imageUrl) {
-    errors.imageUrl = 'Hãy nhập đường dẫn ảnh tác phẩm.'
-  } else if (!isHttpImageUrl(imageUrl)) {
-    errors.imageUrl = 'Dùng URL đầy đủ bắt đầu bằng http:// hoặc https://.'
-  } else if (imageUrl.length > 2048) {
-    errors.imageUrl = 'URL ảnh không được vượt quá 2.048 ký tự.'
+  if (imageInputMode === 'url') {
+    const imageUrl = draft.imageUrl.trim()
+    if (!imageUrl) {
+      errors.imageUrl = 'Hãy nhập URL ảnh tác phẩm.'
+    } else if (!isHttpImageUrl(imageUrl)) {
+      errors.imageUrl = 'URL ảnh phải bắt đầu bằng http:// hoặc https://.'
+    }
+  } else {
+    if (!draft.imageFile) {
+      errors.imageFile = 'Hãy chọn ảnh tác phẩm để tải lên.'
+    } else if (
+      !POST_IMAGE_MIME_TYPES.includes(
+        draft.imageFile.type as (typeof POST_IMAGE_MIME_TYPES)[number],
+      )
+    ) {
+      errors.imageFile = 'Chỉ nhận ảnh JPG, PNG hoặc WebP.'
+    } else if (
+      draft.imageFile.size <= 0 ||
+      draft.imageFile.size > MAX_POST_IMAGE_BYTES
+    ) {
+      errors.imageFile = 'Ảnh phải có dung lượng không quá 50 MB.'
+    }
   }
 
   if (examName.length > 160) {
@@ -79,13 +104,19 @@ export function validateCreatePost(
 
 export function toCreatePostInput(
   draft: CreatePostDraft,
+  imageInputMode: PostImageInputMode = 'upload',
 ): CreatePostInput {
   const examName = draft.examName.trim()
+  const imageUrl = draft.imageUrl.trim()
 
   return {
     title: draft.title.trim(),
     caption: draft.caption.trim(),
-    imageUrl: draft.imageUrl.trim(),
+    ...(imageInputMode === 'url'
+      ? { imageUrl }
+      : draft.imageFile
+        ? { imageFile: draft.imageFile }
+        : {}),
     topicIds: [...new Set(draft.topicIds)],
     ...(examName ? { examName } : {}),
   }

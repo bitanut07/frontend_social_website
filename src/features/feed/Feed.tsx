@@ -13,10 +13,15 @@ import type { FeedProps } from './feedTypes'
 export function Feed({
   posts,
   topics,
+  currentUserId,
   selectedTopicId,
   onTopicChange,
   onCreatePost,
+  onDeletePost,
   onToggleReaction,
+  onListPostComments,
+  onCreatePostComment,
+  onDeletePostComment,
   isLoading = false,
   error = null,
   onRetry,
@@ -24,6 +29,7 @@ export function Feed({
   hasMore = false,
   isLoadingMore = false,
   onLoadMore,
+  imageInputMode = 'upload',
 }: FeedProps) {
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const selectedTopic = topics.find(
@@ -106,8 +112,14 @@ export function Feed({
           <div className="space-y-5">
             {posts.map((post) => (
               <PostCard
-                key={post.id}
+                canDelete={post.author.id === currentUserId}
+                currentUserId={currentUserId}
+                key={`${currentUserId}:${post.id}`}
                 post={post}
+                onCreatePostComment={onCreatePostComment}
+                onDeletePostComment={onDeletePostComment}
+                onDeletePost={onDeletePost}
+                onListPostComments={onListPostComments}
                 onToggleReaction={onToggleReaction}
               />
             ))}
@@ -139,6 +151,7 @@ export function Feed({
       )}
 
       <CreatePostDialog
+        imageInputMode={imageInputMode}
         open={createDialogOpen}
         topics={topics}
         isSubmitting={isCreatingPost}
