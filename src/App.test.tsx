@@ -36,6 +36,8 @@ const USER_ID_1 = '00000000-0000-4000-8000-000000000001'
 const USER_ID_2 = '00000000-0000-4000-8000-000000000002'
 const TOPIC_ID_3 = '10000000-0000-4000-8000-000000000003'
 const POST_ID_1 = '20000000-0000-4000-8000-000000000001'
+const MESSAGE_ID_1 = '50000000-0000-4000-8000-000000000001'
+const MESSAGE_ID_2 = '50000000-0000-4000-8000-000000000002'
 const ASSISTANT_CONVERSATION_ID =
   '60000000-0000-4000-8000-000000000001'
 
@@ -45,12 +47,14 @@ const users = [
     username: 'minh.an',
     displayName: 'Trần Minh An',
     role: 'STUDENT' as const,
+    isSuperAdmin: false,
   },
   {
     id: USER_ID_2,
     username: 'co.lan',
     displayName: 'Cô Nguyễn Hoài Lan',
     role: 'TEACHER' as const,
+    isSuperAdmin: false,
   },
 ]
 
@@ -311,8 +315,32 @@ describe('App', () => {
     ).toBe(true)
   })
 
-  it('mở modal chat từ icon header và chỉ tải API sau khi chọn người', async () => {
+  it('tải preview khi mở modal chat và giữ focus khi nhắn trả lời', async () => {
     const user = userEvent.setup()
+    const incomingMessage = {
+      id: MESSAGE_ID_1,
+      sender: users[1],
+      receiver: users[0],
+      body: 'Em xem giúp cô tin nhắn mới nhé.',
+      createdAt: '2026-07-29T09:00:00.000Z',
+    }
+    const sentMessage = {
+      id: MESSAGE_ID_2,
+      sender: users[0],
+      receiver: users[1],
+      body: 'Em đã đọc rồi ạ.',
+      createdAt: '2026-07-29T09:01:00.000Z',
+    }
+    apiMock.listMessages.mockResolvedValue({
+      data: [incomingMessage],
+      pagination: {
+        ...emptyPagination,
+        pageSize: 50,
+        totalItems: 1,
+        totalPages: 1,
+      },
+    })
+    apiMock.sendMessage.mockResolvedValue(sentMessage)
 
     render(<App />)
     await screen.findByText('Mầm xanh tương lai')
@@ -323,9 +351,29 @@ describe('App', () => {
       screen.getByRole('dialog', { name: 'Danh sách chat' }),
     ).toBeVisible()
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Chats' }),
+      screen.getByRole('heading', { level: 2, name: 'Tin nhắn' }),
     ).toBeVisible()
-    expect(apiMock.listMessages).not.toHaveBeenCalled()
+    expect(
+      screen.queryByRole('button', { name: 'Tùy chọn chat' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Mở rộng danh sách chat' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Tạo chat mới' }),
+    ).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(apiMock.listMessages).toHaveBeenCalledWith(
+        USER_ID_1,
+        {
+          peerId: USER_ID_2,
+          page: 1,
+          pageSize: 1,
+        },
+        expect.any(AbortSignal),
+      )
+    })
+    expect(screen.getByLabelText('Có tin nhắn chưa đọc')).toBeVisible()
     expect(
       screen.getByRole('button', {
         name: `Mở chat với ${users[1].displayName}`,
@@ -358,7 +406,47 @@ describe('App', () => {
     ).toBeVisible()
     expect(screen.getByRole('button', { name: 'Đóng chat' })).toBeVisible()
     expect(
+      window.localStorage.getItem(
+        `artly.chatReadMessage.${USER_ID_1}.${USER_ID_2}`,
+      ),
+    ).toBe(MESSAGE_ID_1)
+    expect(
+      screen.getByRole('button', { name: 'Quay lại danh sách chat' }),
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('button', {
+        name: 'Gọi thoại chưa hỗ trợ trong MVP',
+      }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', {
+        name: 'Gọi video chưa hỗ trợ trong MVP',
+      }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Thu nhỏ chat' }),
+    ).not.toBeInTheDocument()
+    expect(
       screen.queryByRole('button', { name: 'Đính kèm ảnh' }),
+    ).not.toBeInTheDocument()
+
+    const messageInput = screen.getByLabelText('Tin nhắn mới')
+    await user.click(messageInput)
+    await user.type(messageInput, 'Nội dung đang nhập')
+
+    expect(messageInput).toHaveFocus()
+    expect(messageInput).toHaveValue('Nội dung đang nhập')
+
+    await user.clear(messageInput)
+    await user.type(messageInput, sentMessage.body)
+    await user.click(screen.getByRole('button', { name: 'Gửi tin nhắn' }))
+    await waitFor(() => expect(messageInput).toHaveValue(''))
+    await user.click(
+      screen.getByRole('button', { name: 'Quay lại danh sách chat' }),
+    )
+
+    expect(
+      screen.queryByLabelText('Có tin nhắn chưa đọc'),
     ).not.toBeInTheDocument()
   })
 

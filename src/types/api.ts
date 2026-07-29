@@ -32,6 +32,7 @@ export interface User {
   displayName: string
   role: UserRole
   avatarUrl?: string | null
+  isSuperAdmin: boolean
 }
 
 export interface UpdateProfileInput {

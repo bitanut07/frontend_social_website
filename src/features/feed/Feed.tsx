@@ -14,6 +14,7 @@ export function Feed({
   posts,
   topics,
   currentUserId,
+  canDeleteAnyPost = false,
   selectedTopicId,
   onTopicChange,
   onCreatePost,
@@ -112,7 +113,9 @@ export function Feed({
           <div className="space-y-5">
             {posts.map((post) => (
               <PostCard
-                canDelete={post.author.id === currentUserId}
+                canDelete={
+                  canDeleteAnyPost || post.author.id === currentUserId
+                }
                 currentUserId={currentUserId}
                 key={`${currentUserId}:${post.id}`}
                 post={post}

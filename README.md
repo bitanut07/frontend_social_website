@@ -11,8 +11,8 @@ hoặc thống kê bài viết theo chủ đề.
 - Bảng tin phân trang, lọc theo chủ đề và hiển thị trạng thái reaction của tài
   khoản đang chọn.
 - Đăng bài bằng URL ảnh, tiêu đề, mô tả, tên cuộc thi và từ một đến năm chủ đề.
-- Tác giả có thể xác nhận xóa bài của chính mình; bài của người khác không hiện
-  thao tác xóa.
+- Tác giả có thể xác nhận xóa bài của chính mình; tài khoản có
+  `isSuperAdmin=true` có thể xóa bài của tài khoản khác.
 - Thả/gỡ reaction với cập nhật tức thì; giao diện đồng bộ lại khi API báo lỗi.
 - Xem bình luận mới nhất trước, gửi bình luận mới và xóa bình luận của chính
   mình.

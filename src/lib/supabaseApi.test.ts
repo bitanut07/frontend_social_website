@@ -4,6 +4,11 @@ import type { ResourceId } from '../types/api'
 const mocks = vi.hoisted(() => ({
   from: vi.fn(),
   insertComment: vi.fn(),
+  updatePost: vi.fn(),
+  filterPostById: vi.fn(),
+  filterPostNotDeleted: vi.fn(),
+  selectUpdatedPost: vi.fn(),
+  maybeSingleUpdatedPost: vi.fn(),
   rpc: vi.fn(),
   requireSupabaseUser: vi.fn(),
 }))
@@ -50,6 +55,22 @@ describe('Supabase comments API', () => {
         }),
       }),
     })
+    mocks.maybeSingleUpdatedPost.mockResolvedValue({
+      data: { id: POST_ID },
+      error: null,
+    })
+    mocks.selectUpdatedPost.mockReturnValue({
+      maybeSingle: mocks.maybeSingleUpdatedPost,
+    })
+    mocks.filterPostNotDeleted.mockReturnValue({
+      select: mocks.selectUpdatedPost,
+    })
+    mocks.filterPostById.mockReturnValue({
+      is: mocks.filterPostNotDeleted,
+    })
+    mocks.updatePost.mockReturnValue({
+      eq: mocks.filterPostById,
+    })
 
     mocks.from.mockImplementation((table: string) => {
       if (table === 'comments') {
@@ -66,6 +87,9 @@ describe('Supabase comments API', () => {
             }),
           }),
         }
+      }
+      if (table === 'posts') {
+        return { update: mocks.updatePost }
       }
       throw new Error(`Unexpected table: ${table}`)
     })
@@ -113,5 +137,21 @@ describe('Supabase comments API', () => {
     await expect(
       supabaseApi.deletePostComment(USER_ID, POST_ID, COMMENT_ID),
     ).rejects.toThrow('Không thể xóa bình luận')
+  })
+
+  it('để RLS quyết định quyền xóa bài thay vì khóa theo tác giả ở client', async () => {
+    await supabaseApi.deletePost(USER_ID, POST_ID)
+
+    expect(mocks.requireSupabaseUser).toHaveBeenCalledWith(USER_ID)
+    expect(mocks.updatePost).toHaveBeenCalledWith({
+      status: 'REMOVED',
+      deleted_at: expect.any(String),
+    })
+    expect(mocks.filterPostById).toHaveBeenCalledOnce()
+    expect(mocks.filterPostById).toHaveBeenCalledWith('id', POST_ID)
+    expect(mocks.filterPostNotDeleted).toHaveBeenCalledWith(
+      'deleted_at',
+      null,
+    )
   })
 })

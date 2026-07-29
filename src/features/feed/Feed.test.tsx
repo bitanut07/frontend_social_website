@@ -46,6 +46,7 @@ const post: Post = {
     username: 'minh-anh',
     displayName: 'Minh Anh',
     role: 'STUDENT',
+    isSuperAdmin: false,
     avatarUrl: null,
   },
   topics: [topics[0]],
@@ -231,6 +232,23 @@ describe('Feed', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('hiển thị quyền xóa bài của người khác cho super admin', () => {
+    render(
+      <Feed
+        {...createProps({
+          canDeleteAnyPost: true,
+          currentUserId: '00000000-0000-4000-8000-000000000099',
+        })}
+      />,
+    )
+
+    expect(
+      screen.getByRole('button', {
+        name: `Xóa bài viết ${post.title}`,
+      }),
+    ).toBeVisible()
+  })
+
   it('cập nhật reaction ngay rồi rollback và báo lỗi khi callback bị reject', async () => {
     const user = userEvent.setup()
     let rejectReaction: ((reason?: unknown) => void) | undefined
@@ -301,6 +319,7 @@ describe('Feed', () => {
         username: 'co-lan',
         displayName: 'Cô Lan',
         role: 'TEACHER',
+        isSuperAdmin: false,
       },
       body: 'Bình luận mới nhất',
       createdAt: '2026-07-24T05:00:00.000Z',
@@ -400,6 +419,7 @@ describe('Feed', () => {
         username: 'co-lan',
         displayName: 'Cô Lan',
         role: 'TEACHER',
+        isSuperAdmin: false,
         avatarUrl,
       },
       body: 'Cô rất thích cách phối màu này.',
@@ -462,6 +482,7 @@ describe('Feed', () => {
         username: 'co-lan',
         displayName: 'Cô Lan',
         role: 'TEACHER',
+        isSuperAdmin: false,
       },
       body: 'Bình luận của người khác',
       createdAt: '2026-07-24T04:00:00.000Z',
@@ -961,6 +982,7 @@ describe('Feed', () => {
         username: 'co-lan',
         displayName: 'Cô Lan',
         role: 'TEACHER',
+        isSuperAdmin: false,
       },
       body: 'Bình luận của tài khoản mới',
       createdAt: '2026-07-24T06:00:00.000Z',

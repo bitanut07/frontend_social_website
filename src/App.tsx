@@ -54,6 +54,7 @@ const PROFILE_POSTS_PER_PAGE = 30
 const MESSAGES_PER_PAGE = 50
 const MESSAGE_POLL_INTERVAL = 5_000
 const MESSAGE_REQUEST_TIMEOUT = 10_000
+const CHAT_READ_MESSAGE_PREFIX = 'artly.chatReadMessage'
 const DEFAULT_USER_ID: ResourceId =
   '00000000-0000-4000-8000-000000000001'
 const USE_SUPABASE = shouldUseSupabaseBackend({
@@ -74,6 +75,39 @@ function errorMessage(error: unknown, fallback: string) {
 
 function uniquePosts(posts: Post[]) {
   return Array.from(new Map(posts.map((post) => [post.id, post])).values())
+}
+
+function messageBelongsToConversation(
+  message: Message,
+  currentUserId: ResourceId,
+  peerId: ResourceId,
+) {
+  return (
+    (message.sender.id === currentUserId &&
+      message.receiver.id === peerId) ||
+    (message.sender.id === peerId &&
+      message.receiver.id === currentUserId)
+  )
+}
+
+function latestConversationMessage(
+  messages: Message[],
+  currentUserId: ResourceId,
+  peerId: ResourceId,
+) {
+  return messages
+    .filter((message) =>
+      messageBelongsToConversation(message, currentUserId, peerId),
+    )
+    .sort(
+      (first, second) =>
+        new Date(second.createdAt).getTime() -
+        new Date(first.createdAt).getTime(),
+    )[0]
+}
+
+function chatReadMessageKey(userId: ResourceId, peerId: ResourceId) {
+  return `${CHAT_READ_MESSAGE_PREFIX}.${userId}.${peerId}`
 }
 
 async function runSerializedPostCommentMutation<T>(
@@ -209,6 +243,12 @@ function ArtlyWorkspace({
     useState<ResourceId | null>(null)
   const [chatModalOpen, setChatModalOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
+  const [conversationPreviews, setConversationPreviews] = useState<
+    Message[]
+  >([])
+  const [readMessageIds, setReadMessageIds] = useState<Set<ResourceId>>(
+    () => new Set(),
+  )
   const [messageDraft, setMessageDraft] = useState('')
   const [messageImageFile, setMessageImageFile] = useState<File | null>(null)
   const [messagesLoading, setMessagesLoading] = useState(false)
@@ -253,6 +293,40 @@ function ArtlyWorkspace({
   const peers = useMemo(
     () => users.filter((user) => user.id !== selectedUserId),
     [selectedUserId, users],
+  )
+
+  useEffect(() => {
+    const storedMessageIds = new Set<ResourceId>()
+    for (const peer of peers) {
+      const stored = window.localStorage.getItem(
+        chatReadMessageKey(selectedUserId, peer.id),
+      )
+      if (!stored) continue
+      try {
+        storedMessageIds.add(parseResourceId(stored))
+      } catch {
+        window.localStorage.removeItem(
+          chatReadMessageKey(selectedUserId, peer.id),
+        )
+      }
+    }
+    setReadMessageIds(storedMessageIds)
+  }, [peers, selectedUserId])
+
+  const markConversationRead = useCallback(
+    (peerId: ResourceId, messageId: ResourceId) => {
+      window.localStorage.setItem(
+        chatReadMessageKey(selectedUserId, peerId),
+        messageId,
+      )
+      setReadMessageIds((current) => {
+        if (current.has(messageId)) return current
+        const next = new Set(current)
+        next.add(messageId)
+        return next
+      })
+    },
+    [selectedUserId],
   )
 
   useEffect(() => {
@@ -560,6 +634,14 @@ function ArtlyWorkspace({
   }
 
   function handleSelectPeer(peerId: ResourceId) {
+    const latestMessage = latestConversationMessage(
+      conversationPreviews,
+      selectedUserId,
+      peerId,
+    )
+    if (latestMessage?.receiver.id === selectedUserId) {
+      markConversationRead(peerId, latestMessage.id)
+    }
     selectedPeerIdRef.current = peerId
     setChatModalOpen(true)
     setSelectedPeerId(peerId)
@@ -627,6 +709,27 @@ function ArtlyWorkspace({
           return
         }
         setMessages(result.data)
+        const latestMessage = latestConversationMessage(
+          result.data,
+          requestUserId,
+          requestPeerId,
+        )
+        if (latestMessage) {
+          setConversationPreviews((current) => [
+            latestMessage,
+            ...current.filter(
+              (message) =>
+                !messageBelongsToConversation(
+                  message,
+                  requestUserId,
+                  requestPeerId,
+                ),
+            ),
+          ])
+          if (latestMessage.receiver.id === requestUserId) {
+            markConversationRead(requestPeerId, latestMessage.id)
+          }
+        }
         setMessagesLoadError(null)
       } catch (error) {
         if (timedOut) return
@@ -660,8 +763,50 @@ function ArtlyWorkspace({
         }
       }
     },
-    [dataApi, selectedPeerId, selectedUserId],
+    [dataApi, markConversationRead, selectedPeerId, selectedUserId],
   )
+
+  useEffect(() => {
+    if (!chatModalOpen || selectedPeerId || peers.length === 0) return
+
+    const abortController = new AbortController()
+    const requestUserId = selectedUserId
+
+    async function refreshConversationPreviews() {
+      const results = await Promise.allSettled(
+        peers.map((peer) =>
+          dataApi.listMessages(
+            requestUserId,
+            { peerId: peer.id, page: 1, pageSize: 1 },
+            abortController.signal,
+          ),
+        ),
+      )
+      if (
+        abortController.signal.aborted ||
+        requestUserId !== selectedUserIdRef.current
+      ) {
+        return
+      }
+
+      setConversationPreviews(
+        results.flatMap((result) =>
+          result.status === 'fulfilled' ? result.value.data.slice(0, 1) : [],
+        ),
+      )
+    }
+
+    void refreshConversationPreviews()
+    const interval = window.setInterval(
+      () => void refreshConversationPreviews(),
+      MESSAGE_POLL_INTERVAL,
+    )
+
+    return () => {
+      abortController.abort()
+      window.clearInterval(interval)
+    }
+  }, [chatModalOpen, dataApi, peers, selectedPeerId, selectedUserId])
 
   useEffect(() => {
     if (!chatModalOpen || !selectedPeerId) return
@@ -1102,6 +1247,17 @@ function ArtlyWorkspace({
           ? current
           : [...current, sent],
       )
+      setConversationPreviews((current) => [
+        sent,
+        ...current.filter(
+          (message) =>
+            !messageBelongsToConversation(
+              message,
+              senderId,
+              recipientId,
+            ),
+        ),
+      ])
       setMessageDraft('')
       setMessageImageFile(null)
     } catch (error) {
@@ -1543,6 +1699,7 @@ function ArtlyWorkspace({
             </section>
           ) : (
             <Feed
+              canDeleteAnyPost={currentUser?.isSuperAdmin === true}
               currentUserId={selectedUserId}
               error={feedError}
               hasMore={hasMore}
@@ -1663,10 +1820,12 @@ function ArtlyWorkspace({
           isLoading={messagesLoading}
           isOpen={chatModalOpen}
           isSending={messageSending}
-          messages={messages}
+          messages={selectedPeerId ? messages : conversationPreviews}
           peers={peers}
+          readMessageIds={readMessageIds}
           selectedPeerId={selectedPeerId}
           sendError={messageSendError}
+          onBackToList={openMessagesList}
           onClose={closeChatModal}
           onDraftChange={(value) => {
             setMessageDraft(value)

@@ -73,6 +73,7 @@ function toUser(row: Row): User {
     role: rawRole === 'TEACHER' ? 'TEACHER' : 'STUDENT',
     avatarUrl:
       typeof row.avatar_url === 'string' ? row.avatar_url : null,
+    isSuperAdmin: row.is_super_admin === true,
   }
 }
 
@@ -98,6 +99,7 @@ function toPostComment(
       username: 'artly',
       displayName: 'Thành viên Artly',
       role: 'STUDENT',
+      isSuperAdmin: false,
     },
     body: String(row.body ?? ''),
     createdAt: String(row.created_at),
@@ -302,7 +304,7 @@ async function mapMessages(
 ): Promise<Message[]> {
   const { data: userRows, error } = await supabase
     .from('users')
-    .select('id, username, display_name, role, avatar_url')
+    .select('id, username, display_name, role, avatar_url, is_super_admin')
     .in('id', [currentUserId, peerId])
 
   if (error) fail(error.message)
@@ -340,7 +342,7 @@ export const supabaseApi: ApiClient = {
     const { from, to, pageSize } = range(params, 20)
     const { data, error, count } = await supabase
       .from('users')
-      .select('id, username, display_name, role, avatar_url', {
+      .select('id, username, display_name, role, avatar_url, is_super_admin', {
         count: 'exact',
       })
       .eq('status', 'ACTIVE')
@@ -385,7 +387,7 @@ export const supabaseApi: ApiClient = {
           avatar_url: avatarUrl,
         })
         .eq('id', userId)
-        .select('id, username, display_name, role, avatar_url')
+        .select('id, username, display_name, role, avatar_url, is_super_admin')
         .single()
 
       if (error) fail(error.message)
@@ -506,7 +508,7 @@ export const supabaseApi: ApiClient = {
     ] = await Promise.all([
       supabase
         .from('users')
-        .select('id, username, display_name, role, avatar_url')
+        .select('id, username, display_name, role, avatar_url, is_super_admin')
         .in('id', authorIds),
       supabase
         .from('post_media')
@@ -598,6 +600,7 @@ export const supabaseApi: ApiClient = {
           username: 'artly',
           displayName: 'Thành viên Artly',
           role: 'STUDENT',
+          isSuperAdmin: false,
         },
         topics: topics.get(postId) ?? [],
         reactionCount: reactionCounts.get(postId) ?? 0,
@@ -695,7 +698,7 @@ export const supabaseApi: ApiClient = {
       const [{ data: profile }, { data: topicRows }] = await Promise.all([
         supabase
           .from('users')
-          .select('id, username, display_name, role, avatar_url')
+          .select('id, username, display_name, role, avatar_url, is_super_admin')
           .eq('id', userId)
           .single(),
         supabase
@@ -717,6 +720,7 @@ export const supabaseApi: ApiClient = {
               username: 'artly',
               displayName: 'Thành viên Artly',
               role: 'STUDENT',
+              isSuperAdmin: false,
             },
         topics: (topicRows ?? []).map((row) => toTopic(row)),
         reactionCount: 0,
@@ -785,7 +789,7 @@ export const supabaseApi: ApiClient = {
     ]
     const { data: authorRows, error: authorError } = await supabase
       .from('users')
-      .select('id, username, display_name, role, avatar_url')
+      .select('id, username, display_name, role, avatar_url, is_super_admin')
       .in('id', authorIds)
 
     if (authorError) fail(authorError.message)
@@ -812,7 +816,7 @@ export const supabaseApi: ApiClient = {
 
     const { data: authorRow, error: authorError } = await supabase
       .from('users')
-      .select('id, username, display_name, role, avatar_url')
+      .select('id, username, display_name, role, avatar_url, is_super_admin')
       .eq('id', userId)
       .single()
 
@@ -860,7 +864,6 @@ export const supabaseApi: ApiClient = {
         deleted_at: new Date().toISOString(),
       })
       .eq('id', postId)
-      .eq('user_id', userId)
       .is('deleted_at', null)
       .select('id')
       .maybeSingle()
@@ -919,7 +922,7 @@ export const supabaseApi: ApiClient = {
       .select('id, sender_id, body, created_at', { count: 'exact' })
       .eq('conversation_id', conversationId)
       .is('deleted_at', null)
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
       .range(from, to)
 
     if (signal) query = query.abortSignal(signal)

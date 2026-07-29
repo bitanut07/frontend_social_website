@@ -16,6 +16,7 @@ export interface FeedProps {
   posts: Post[]
   topics: Topic[]
   currentUserId: ResourceId
+  canDeleteAnyPost?: boolean
   selectedTopicId: ResourceId | null
   onTopicChange: (topicId: ResourceId | null) => void
   onCreatePost: (input: CreatePostInput) => FeedActionResult

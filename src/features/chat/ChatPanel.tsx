@@ -1,11 +1,4 @@
-import {
-  ArrowLeft,
-  MessageCircle,
-  Minus,
-  Phone,
-  Video,
-  X,
-} from 'lucide-react'
+import { ArrowLeft, MessageCircle, X } from 'lucide-react'
 import { useId } from 'react'
 import type { Message, ResourceId, User } from '../../types/api'
 import { ChatComposer } from './ChatComposer'
@@ -25,10 +18,8 @@ export interface ChatPanelProps {
   error?: string | null
   sendError?: string | null
   className?: string
-  showFloatingActions?: boolean
   onBackToList?: () => void
   onClose?: () => void
-  onMinimize?: () => void
   onDraftChange: (value: string) => void
   onImageChange?: (file: File | null) => void
   onSend: () => void
@@ -48,10 +39,8 @@ export function ChatPanel({
   error = null,
   sendError = null,
   className,
-  showFloatingActions = false,
   onBackToList,
   onClose,
-  onMinimize,
   onDraftChange,
   onImageChange,
   onSend,
@@ -70,28 +59,28 @@ export function ChatPanel({
         'mx-auto flex h-[min(74vh,45rem)] min-h-[34rem] w-full max-w-[41rem] flex-col overflow-hidden rounded-lg border border-stone-200 bg-white shadow-[0_18px_50px_rgb(15_23_42_/_0.16)]'
       }
     >
-      <header className="flex min-h-20 items-center gap-3 border-b border-stone-200 bg-white px-3 py-3 shadow-sm sm:px-4">
+      <header className="flex min-h-16 items-center gap-2.5 border-b border-stone-200 bg-white px-3 py-2 shadow-sm">
         {onBackToList && (
           <button
             aria-label="Quay lại danh sách chat"
-            className="grid size-10 shrink-0 place-items-center rounded-full text-stone-600 transition hover:bg-stone-100 hover:text-stone-950"
+            className="grid size-9 shrink-0 place-items-center rounded-full text-stone-600 transition hover:bg-stone-100 hover:text-stone-950"
             type="button"
             onClick={onBackToList}
           >
-            <ArrowLeft aria-hidden="true" size={21} />
+            <ArrowLeft aria-hidden="true" size={19} />
           </button>
         )}
         {selectedPeer ? (
-          <UserAvatar className="size-12" user={selectedPeer} />
+          <UserAvatar className="size-10" user={selectedPeer} />
         ) : (
-          <span className="grid size-12 shrink-0 place-items-center rounded-full bg-[#f5d3df] text-[#9c2b69]">
-            <MessageCircle aria-hidden="true" size={22} />
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[#f5d3df] text-[#9c2b69]">
+            <MessageCircle aria-hidden="true" size={20} />
           </span>
         )}
         <div className="min-w-0 flex-1">
           <h2
             id={titleId}
-            className="truncate text-lg font-black text-stone-950"
+            className="truncate text-base font-black text-stone-950"
           >
             {selectedPeer ? selectedPeer.displayName : 'Tin nhắn'}
           </h2>
@@ -101,42 +90,16 @@ export function ChatPanel({
               : 'Chọn một người để bắt đầu'}
           </p>
         </div>
-        {showFloatingActions && (
-          <div className="flex shrink-0 items-center gap-1 text-[#8b35c9]">
-            <button
-              aria-label="Gọi thoại chưa hỗ trợ trong MVP"
-              className="grid size-9 place-items-center rounded-full opacity-70"
-              disabled
-              type="button"
-            >
-              <Phone aria-hidden="true" size={19} />
-            </button>
-            <button
-              aria-label="Gọi video chưa hỗ trợ trong MVP"
-              className="grid size-9 place-items-center rounded-full opacity-70"
-              disabled
-              type="button"
-            >
-              <Video aria-hidden="true" size={20} />
-            </button>
-            <button
-              aria-label="Thu nhỏ chat"
-              className="grid size-9 place-items-center rounded-full transition hover:bg-[#f3e8ff]"
-              type="button"
-              onClick={onMinimize}
-            >
-              <Minus aria-hidden="true" size={21} />
-            </button>
+        {onClose ? (
             <button
               aria-label="Đóng chat"
-              className="grid size-9 place-items-center rounded-full text-[#fb7185] transition hover:bg-rose-50"
+              className="grid size-9 shrink-0 place-items-center rounded-full text-stone-500 transition hover:bg-stone-100 hover:text-stone-950"
               type="button"
               onClick={onClose}
             >
-              <X aria-hidden="true" size={25} />
+              <X aria-hidden="true" size={19} />
             </button>
-          </div>
-        )}
+        ) : null}
       </header>
 
       <ConversationContent

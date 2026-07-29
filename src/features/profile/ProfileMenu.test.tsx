@@ -9,6 +9,7 @@ const user: User = {
   username: 'minh.an',
   displayName: 'Trần Minh An',
   role: 'STUDENT',
+  isSuperAdmin: false,
   avatarUrl: null,
 }
 

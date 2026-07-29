@@ -15,6 +15,7 @@ const student: User = {
   username: 'linh.ve',
   displayName: 'Nguyễn Gia Linh',
   role: 'STUDENT',
+  isSuperAdmin: false,
 }
 
 const teacher: User = {
@@ -22,6 +23,7 @@ const teacher: User = {
   username: 'co.mai',
   displayName: 'Cô Mai Anh',
   role: 'TEACHER',
+  isSuperAdmin: false,
 }
 
 const messages: Message[] = [
