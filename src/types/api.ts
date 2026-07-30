@@ -76,6 +76,7 @@ export interface Post {
   title: string
   caption: string
   imageUrl: string
+  imageUrls?: string[]
   examName?: string
   author: User
   topics: Topic[]
@@ -102,7 +103,9 @@ export interface CreatePostInput {
   title: string
   caption: string
   imageFile?: File
+  imageFiles?: File[]
   imageUrl?: string
+  imageUrls?: string[]
   examName?: string
   topicIds: ResourceId[]
 }

@@ -30,7 +30,7 @@ export function CreatePostDialog({
   )
   const [errors, setErrors] = useState<CreatePostErrors>({})
   const [isSubmittingLocally, setIsSubmittingLocally] = useState(false)
-  const [previewUrl, setPreviewUrl] = useState('')
+  const [previewUrls, setPreviewUrls] = useState<string[]>([])
   const submissionCancelledRef = useRef(false)
   const formErrorRef = useRef<HTMLDivElement>(null)
   const busy = isSubmitting || isSubmittingLocally
@@ -47,17 +47,21 @@ export function CreatePostDialog({
 
   useEffect(() => {
     if (
-      !draft.imageFile ||
+      draft.imageFiles.length === 0 ||
       typeof URL.createObjectURL !== 'function'
     ) {
-      setPreviewUrl('')
+      setPreviewUrls([])
       return
     }
 
-    const nextPreviewUrl = URL.createObjectURL(draft.imageFile)
-    setPreviewUrl(nextPreviewUrl)
-    return () => URL.revokeObjectURL(nextPreviewUrl)
-  }, [draft.imageFile])
+    const nextPreviewUrls = draft.imageFiles.map((file) =>
+      URL.createObjectURL(file),
+    )
+    setPreviewUrls(nextPreviewUrls)
+    return () => {
+      nextPreviewUrls.forEach((url) => URL.revokeObjectURL(url))
+    }
+  }, [draft.imageFiles])
 
   if (!open) {
     return null
@@ -89,11 +93,11 @@ export function CreatePostDialog({
     }))
   }
 
-  const updateImage = (file: File | null) => {
-    setDraft((current) => ({ ...current, imageFile: file }))
+  const updateImages = (files: File[]) => {
+    setDraft((current) => ({ ...current, imageFiles: files }))
     setErrors((current) => ({
       ...current,
-      imageFile: undefined,
+      imageFiles: undefined,
       form: undefined,
     }))
   }
@@ -259,9 +263,9 @@ export function CreatePostDialog({
                 <PostImageField
                   draft={draft}
                   errors={errors}
-                  previewUrl={previewUrl}
+                  previewUrls={previewUrls}
                   busy={busy}
-                  onChange={updateImage}
+                  onChange={updateImages}
                 />
               ) : (
                 <PostImageUrlField

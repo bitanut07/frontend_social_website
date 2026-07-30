@@ -310,7 +310,7 @@ export function createApiClient(
     },
 
     async createPost(userId, input) {
-      if (input.imageFile) {
+      if (input.imageFile || (input.imageFiles?.length ?? 0) > 0) {
         throw new ApiError({
           status: 0,
           code: 'SUPABASE_STORAGE_REQUIRED',

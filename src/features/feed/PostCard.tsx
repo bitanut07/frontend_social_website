@@ -1,7 +1,6 @@
 import {
   Award,
   Heart,
-  ImageOff,
   LoaderCircle,
   MessageCircle,
   Trash2,
@@ -14,6 +13,7 @@ import {
   getInitials,
 } from './feedFormatting'
 import { PostComments } from './PostComments'
+import { PostMediaGallery } from './PostMediaGallery'
 import type { PostCardProps } from './feedTypes'
 
 interface ReactionView {
@@ -59,7 +59,6 @@ export function PostCard({
   onCreatePostComment,
   onDeletePostComment,
 }: PostCardProps) {
-  const [imageFailed, setImageFailed] = useState(false)
   const [optimisticReaction, setOptimisticReaction] =
     useState<ReactionView | null>(null)
   const [isUpdatingReaction, setIsUpdatingReaction] = useState(false)
@@ -72,10 +71,6 @@ export function PostCard({
   const [displayedCommentCount, setDisplayedCommentCount] = useState(
     Math.max(0, post.commentCount),
   )
-
-  useEffect(() => {
-    setImageFailed(false)
-  }, [post.imageUrl])
 
   useEffect(() => {
     setOptimisticReaction(null)
@@ -186,32 +181,7 @@ export function PostCard({
         ) : null}
       </header>
 
-      <div className="aspect-square overflow-hidden bg-stone-100">
-        {imageFailed || !post.imageUrl.trim() ? (
-          <div
-            role="img"
-            aria-label={`Không tải được ảnh tác phẩm ${post.title}`}
-            className="grid size-full place-items-center px-6 text-center text-stone-500"
-          >
-            <span>
-              <ImageOff aria-hidden="true" className="mx-auto size-8" />
-              <span className="mt-2 block text-sm">
-                Không tải được ảnh tác phẩm
-              </span>
-            </span>
-          </div>
-        ) : (
-          <img
-            src={post.imageUrl}
-            alt={`Tác phẩm “${post.title}” của ${post.author.displayName}`}
-            decoding="async"
-            loading="lazy"
-            referrerPolicy="no-referrer"
-            onError={() => setImageFailed(true)}
-            className="size-full object-cover"
-          />
-        )}
-      </div>
+      <PostMediaGallery post={post} />
 
       <div className="px-4 pb-4 pt-3">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">

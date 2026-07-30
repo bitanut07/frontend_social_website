@@ -1895,4 +1895,56 @@ describe('Feed', () => {
       }),
     ).toBeVisible()
   })
+
+  it('chọn và gửi nhiều ảnh theo đúng thứ tự trong một bài post', async () => {
+    const user = userEvent.setup()
+    const onCreatePost = vi.fn().mockResolvedValue(undefined)
+    render(<Feed {...createProps({ onCreatePost })} />)
+
+    await user.click(
+      screen.getByRole('button', { name: /Đăng tác phẩm/ }),
+    )
+    const dialog = screen.getByRole('dialog', {
+      name: 'Đăng tác phẩm mới',
+    })
+    const firstImage = new File(['first'], 'goc-nhin-mot.png', {
+      type: 'image/png',
+    })
+    const secondImage = new File(['second'], 'goc-nhin-hai.webp', {
+      type: 'image/webp',
+    })
+
+    await user.upload(
+      within(dialog).getByLabelText('Chọn ảnh tác phẩm từ máy'),
+      [firstImage, secondImage],
+    )
+
+    expect(within(dialog).getByText('2/10 ảnh')).toBeVisible()
+    expect(within(dialog).getByText(firstImage.name)).toBeVisible()
+    expect(within(dialog).getByText(secondImage.name)).toBeVisible()
+
+    await user.type(
+      within(dialog).getByLabelText(/^Tiêu đề/),
+      'Hai góc nhìn',
+    )
+    await user.type(
+      within(dialog).getByLabelText(/^Mô tả/),
+      'Một tác phẩm được kể bằng hai khung hình.',
+    )
+    await user.click(
+      within(dialog).getByRole('checkbox', { name: 'Thiên nhiên' }),
+    )
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Đăng tác phẩm' }),
+    )
+
+    await waitFor(() => {
+      expect(onCreatePost).toHaveBeenCalledWith({
+        title: 'Hai góc nhìn',
+        caption: 'Một tác phẩm được kể bằng hai khung hình.',
+        imageFiles: [firstImage, secondImage],
+        topicIds: [TOPIC_ID_1],
+      })
+    })
+  })
 })

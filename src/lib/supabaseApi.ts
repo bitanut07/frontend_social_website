@@ -542,10 +542,10 @@ export const supabaseApi: ApiClient = {
     const authors = new Map(
       (authorRows ?? []).map((row) => [parseResourceId(row.id), toUser(row)]),
     )
-    const media = new Map<string, Row>()
+    const media = new Map<string, Row[]>()
     for (const row of mediaRows ?? []) {
       const id = parseResourceId(row.post_id, 'post_id')
-      if (!media.has(id)) media.set(id, row)
+      media.set(id, [...(media.get(id) ?? []), row])
     }
 
     const topics = new Map<string, Topic[]>()
@@ -579,20 +579,30 @@ export const supabaseApi: ApiClient = {
       )
     }
 
-    const urls = await Promise.all(
-      postRows.map((row) =>
-        signedPostMediaUrl(media.get(parseResourceId(row.id)) ?? {}),
-      ),
+    const urlsByPost = new Map<string, string[]>()
+    await Promise.all(
+      postRows.map(async (row) => {
+        const postId = parseResourceId(row.id)
+        const urls = await Promise.all(
+          (media.get(postId) ?? []).map(signedPostMediaUrl),
+        )
+        urlsByPost.set(
+          postId,
+          urls.filter((url) => url.length > 0),
+        )
+      }),
     )
 
-    const posts: Post[] = postRows.map((row, index) => {
+    const posts: Post[] = postRows.map((row) => {
       const postId = parseResourceId(row.id)
       const authorId = parseResourceId(row.user_id, 'user_id')
+      const imageUrls = urlsByPost.get(postId) ?? []
       return {
         id: postId,
         title: String(row.title ?? 'Tác phẩm chưa đặt tên'),
         caption: String(row.caption ?? ''),
-        imageUrl: urls[index],
+        imageUrl: imageUrls[0] ?? '',
+        imageUrls,
         examName:
           typeof row.exam_name === 'string' ? row.exam_name : undefined,
         author: authors.get(authorId) ?? {
@@ -618,8 +628,30 @@ export const supabaseApi: ApiClient = {
 
   async createPost(userId, input) {
     await requireSupabaseUser(userId)
-    if (!input.imageFile && !input.imageUrl) {
+    const imageFiles =
+      input.imageFiles && input.imageFiles.length > 0
+        ? input.imageFiles
+        : input.imageFile
+          ? [input.imageFile]
+          : []
+    const externalImageUrls = Array.from(
+      new Set(
+        (input.imageUrls && input.imageUrls.length > 0
+          ? input.imageUrls
+          : input.imageUrl
+            ? [input.imageUrl]
+            : []
+        )
+          .map((url) => url.trim())
+          .filter(Boolean),
+      ),
+    )
+
+    if (imageFiles.length === 0 && externalImageUrls.length === 0) {
       fail('Hãy chọn ảnh tác phẩm để tải lên')
+    }
+    if (imageFiles.length + externalImageUrls.length > 10) {
+      fail('Mỗi bài chỉ được đăng tối đa 10 ảnh')
     }
 
     const postId = createResourceId()
@@ -639,14 +671,12 @@ export const supabaseApi: ApiClient = {
 
     if (error) fail(error.message)
 
-    let uploadedObject: UploadedObject | null = null
+    const uploadedObjects: UploadedObject[] = []
 
     try {
-      if (input.imageFile) {
-        uploadedObject = await uploadPostMedia(
-          userId,
-          postId,
-          input.imageFile,
+      for (const imageFile of imageFiles) {
+        uploadedObjects.push(
+          await uploadPostMedia(userId, postId, imageFile),
         )
       }
 
@@ -663,19 +693,32 @@ export const supabaseApi: ApiClient = {
 
       const { error: mediaError } = await supabase
         .from('post_media')
-        .insert({
-          post_id: postId,
-          media_type: 'IMAGE',
-          storage_bucket: uploadedObject?.bucket ?? null,
-          storage_path: uploadedObject?.path ?? null,
-          media_url: uploadedObject ? null : input.imageUrl,
-          mime_type: uploadedObject?.mimeType ?? null,
-          size_bytes: uploadedObject?.sizeBytes ?? null,
-          original_file_name:
-            uploadedObject?.originalFileName ?? null,
-          position: 0,
-          alt_text: input.title,
-        })
+        .insert([
+          ...uploadedObjects.map((uploadedObject, position) => ({
+            post_id: postId,
+            media_type: 'IMAGE',
+            storage_bucket: uploadedObject.bucket,
+            storage_path: uploadedObject.path,
+            media_url: null,
+            mime_type: uploadedObject.mimeType,
+            size_bytes: uploadedObject.sizeBytes,
+            original_file_name: uploadedObject.originalFileName,
+            position,
+            alt_text: input.title,
+          })),
+          ...externalImageUrls.map((mediaUrl, externalIndex) => ({
+            post_id: postId,
+            media_type: 'IMAGE',
+            storage_bucket: null,
+            storage_path: null,
+            media_url: mediaUrl,
+            mime_type: null,
+            size_bytes: null,
+            original_file_name: null,
+            position: uploadedObjects.length + externalIndex,
+            alt_text: input.title,
+          })),
+        ])
       if (mediaError) fail(mediaError.message)
 
       const { error: publishError } = await supabase
@@ -688,12 +731,17 @@ export const supabaseApi: ApiClient = {
         .eq('user_id', userId)
       if (publishError) fail(publishError.message)
 
-      const imageUrl = uploadedObject
-        ? await createSignedStorageUrl(
-            uploadedObject.bucket,
-            uploadedObject.path,
-          )
-        : (input.imageUrl ?? '')
+      const imageUrls = [
+        ...(await Promise.all(
+          uploadedObjects.map((uploadedObject) =>
+            createSignedStorageUrl(
+              uploadedObject.bucket,
+              uploadedObject.path,
+            ),
+          ),
+        )),
+        ...externalImageUrls,
+      ]
 
       const [{ data: profile }, { data: topicRows }] = await Promise.all([
         supabase
@@ -711,7 +759,8 @@ export const supabaseApi: ApiClient = {
         id: postId,
         title: input.title,
         caption: input.caption,
-        imageUrl,
+        imageUrl: imageUrls[0] ?? '',
+        imageUrls,
         examName: input.examName,
         author: profile
           ? toUser(profile)
@@ -730,14 +779,12 @@ export const supabaseApi: ApiClient = {
       }
     } catch (createError) {
       await Promise.allSettled([
-        ...(uploadedObject
-          ? [
-              removeUploadedObject(
-                uploadedObject.bucket,
-                uploadedObject.path,
-              ),
-            ]
-          : []),
+        ...uploadedObjects.map((uploadedObject) =>
+          removeUploadedObject(
+            uploadedObject.bucket,
+            uploadedObject.path,
+          ),
+        ),
         supabase.from('post_media').delete().eq('post_id', postId),
         supabase.from('post_topics').delete().eq('post_id', postId),
         supabase

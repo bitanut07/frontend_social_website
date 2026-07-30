@@ -1,6 +1,6 @@
 import {
   Image as ImageIcon,
-  RefreshCw,
+  Plus,
   Trash2,
   UploadCloud,
 } from 'lucide-react'
@@ -12,6 +12,7 @@ import {
 } from 'react'
 import {
   MAX_POST_IMAGE_BYTES,
+  MAX_POST_IMAGES,
   POST_IMAGE_MIME_TYPES,
   type CreatePostDraft,
   type CreatePostErrors,
@@ -21,9 +22,9 @@ import { CreatePostFieldError } from './CreatePostField'
 interface PostImageFieldProps {
   draft: CreatePostDraft
   errors: CreatePostErrors
-  previewUrl: string
+  previewUrls: string[]
   busy: boolean
-  onChange: (file: File | null) => void
+  onChange: (files: File[]) => void
 }
 
 function formatFileSize(bytes: number) {
@@ -33,40 +34,64 @@ function formatFileSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-function fileValidationMessage(file: File | null) {
-  if (!file) return undefined
+function filesValidationMessage(files: File[]) {
+  if (files.length > MAX_POST_IMAGES) {
+    return `Mỗi bài chỉ được đăng tối đa ${MAX_POST_IMAGES} ảnh.`
+  }
   if (
-    !POST_IMAGE_MIME_TYPES.includes(
-      file.type as (typeof POST_IMAGE_MIME_TYPES)[number],
+    files.some(
+      (file) =>
+        !POST_IMAGE_MIME_TYPES.includes(
+          file.type as (typeof POST_IMAGE_MIME_TYPES)[number],
+        ),
     )
   ) {
     return 'Chỉ nhận ảnh JPG, PNG hoặc WebP.'
   }
-  if (file.size <= 0 || file.size > MAX_POST_IMAGE_BYTES) {
-    return 'Ảnh phải có dung lượng không quá 50 MB.'
+  if (
+    files.some(
+      (file) =>
+        file.size <= 0 || file.size > MAX_POST_IMAGE_BYTES,
+    )
+  ) {
+    return 'Mỗi ảnh phải có dung lượng không quá 50 MB.'
   }
   return undefined
+}
+
+function sameFile(left: File, right: File) {
+  return (
+    left.name === right.name &&
+    left.size === right.size &&
+    left.lastModified === right.lastModified
+  )
 }
 
 export function PostImageField({
   draft,
   errors,
-  previewUrl,
+  previewUrls,
   busy,
   onChange,
 }: PostImageFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const dragDepthRef = useRef(0)
   const [isDragging, setIsDragging] = useState(false)
-  const localError = fileValidationMessage(draft.imageFile)
-  const error = errors.imageFile ?? localError
+  const localError = filesValidationMessage(draft.imageFiles)
+  const error = errors.imageFiles ?? localError
 
-  const selectFile = (file?: File) => {
-    if (file) onChange(file)
+  const selectFiles = (selectedFiles: FileList | File[]) => {
+    const nextFiles = [...draft.imageFiles]
+    Array.from(selectedFiles).forEach((file) => {
+      if (!nextFiles.some((current) => sameFile(current, file))) {
+        nextFiles.push(file)
+      }
+    })
+    onChange(nextFiles)
   }
 
   const handleInput = (event: ChangeEvent<HTMLInputElement>) => {
-    selectFile(event.target.files?.[0])
+    if (event.target.files) selectFiles(event.target.files)
   }
 
   const handleDragEnter = (event: DragEvent<HTMLDivElement>) => {
@@ -86,12 +111,11 @@ export function PostImageField({
     event.preventDefault()
     dragDepthRef.current = 0
     setIsDragging(false)
-    if (busy) return
-    selectFile(event.dataTransfer.files?.[0])
+    if (!busy) selectFiles(event.dataTransfer.files)
   }
 
-  const openPicker = () => {
-    inputRef.current?.click()
+  const removeFile = (index: number) => {
+    onChange(draft.imageFiles.filter((_, fileIndex) => fileIndex !== index))
   }
 
   return (
@@ -112,21 +136,27 @@ export function PostImageField({
             id="post-image-help"
             className="mt-1 text-xs leading-5 text-stone-500"
           >
-            JPG, PNG hoặc WebP · tối đa 50 MB
+            Tối đa {MAX_POST_IMAGES} ảnh JPG, PNG hoặc WebP · 50 MB mỗi ảnh
           </p>
         </div>
-        {draft.imageFile ? (
-          <span className="shrink-0 rounded-full bg-orange-100 px-2.5 py-1 text-xs font-bold text-orange-800">
-            Sẵn sàng tải lên
-          </span>
+        {draft.imageFiles.length > 0 ? (
+          <div className="flex shrink-0 items-center gap-2 text-xs font-bold">
+            <span className="hidden text-orange-800 sm:inline">
+              Sẵn sàng tải lên
+            </span>
+            <span className="rounded-full bg-orange-100 px-2.5 py-1 text-orange-800">
+              {draft.imageFiles.length}/{MAX_POST_IMAGES} ảnh
+            </span>
+          </div>
         ) : null}
       </div>
 
       <input
         ref={inputRef}
         id="post-image"
-        name="imageFile"
+        name="imageFiles"
         type="file"
+        multiple
         accept={POST_IMAGE_MIME_TYPES.join(',')}
         disabled={busy}
         aria-label="Chọn ảnh tác phẩm từ máy"
@@ -141,58 +171,74 @@ export function PostImageField({
       <div
         role="region"
         aria-label="Vùng kéo thả ảnh tác phẩm"
-        className={`group relative mt-3 overflow-hidden rounded-xl border-2 border-dashed transition ${
+        className={`mt-3 rounded-xl border-2 border-dashed p-3 transition ${
           isDragging
             ? 'border-orange-700 bg-orange-100 ring-4 ring-orange-200/60'
             : error
               ? 'border-rose-400 bg-rose-50/60'
               : 'border-orange-300 bg-[#fffdf1] hover:border-orange-700 hover:bg-orange-50'
-        } ${draft.imageFile && previewUrl ? 'aspect-[4/3]' : 'min-h-80'}`}
+        }`}
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={(event) => event.preventDefault()}
         onDrop={handleDrop}
       >
-        {draft.imageFile && previewUrl && !localError ? (
-          <>
-            <img
-              src={previewUrl}
-              alt={`Xem trước ảnh ${draft.imageFile.name}`}
-              className="size-full object-contain"
-            />
-            <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 bg-gradient-to-t from-stone-950/85 via-stone-950/55 to-transparent px-4 pt-14 pb-4 text-white">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-bold">
-                  {draft.imageFile.name}
-                </p>
-                <p className="mt-0.5 text-xs text-white/75">
-                  {formatFileSize(draft.imageFile.size)}
-                </p>
-              </div>
-              <div className="flex shrink-0 gap-2">
+        {draft.imageFiles.length > 0 ? (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {draft.imageFiles.map((file, index) => (
+              <figure
+                key={`${file.name}-${file.size}-${file.lastModified}`}
+                className="group relative min-w-0 overflow-hidden rounded-lg border border-stone-200 bg-stone-100"
+              >
+                <div className="aspect-square">
+                  {previewUrls[index] && !filesValidationMessage([file]) ? (
+                    <img
+                      src={previewUrls[index]}
+                      alt={`Xem trước ảnh ${file.name}`}
+                      className="size-full object-cover"
+                    />
+                  ) : (
+                    <span className="grid size-full place-items-center text-stone-400">
+                      <ImageIcon aria-hidden="true" className="size-7" />
+                    </span>
+                  )}
+                </div>
+                <figcaption className="min-w-0 border-t border-stone-200 bg-white px-2.5 py-2 pr-10">
+                  <p className="truncate text-xs font-bold text-stone-800">
+                    {file.name}
+                  </p>
+                  <p className="mt-0.5 text-[0.68rem] text-stone-500">
+                    {formatFileSize(file.size)}
+                  </p>
+                </figcaption>
                 <button
                   type="button"
                   disabled={busy}
-                  onClick={openPicker}
-                  className="inline-flex min-h-10 items-center gap-2 rounded-md border border-white/40 bg-white/15 px-3 text-xs font-bold text-white backdrop-blur transition hover:bg-white/25 disabled:opacity-50"
+                  aria-label={`Xóa ảnh ${file.name}`}
+                  onClick={() => removeFile(index)}
+                  className="absolute bottom-2 right-2 grid size-8 place-items-center rounded-full bg-stone-950/80 text-white transition hover:bg-rose-700 disabled:opacity-50"
                 >
-                  <RefreshCw aria-hidden="true" className="size-4" />
-                  Đổi ảnh
+                  <Trash2 aria-hidden="true" className="size-3.5" />
                 </button>
-                <button
-                  type="button"
-                  disabled={busy}
-                  aria-label={`Xóa ảnh ${draft.imageFile.name}`}
-                  onClick={() => onChange(null)}
-                  className="grid size-10 place-items-center rounded-md border border-white/40 bg-white/15 text-white backdrop-blur transition hover:bg-rose-600 disabled:opacity-50"
-                >
-                  <Trash2 aria-hidden="true" className="size-4" />
-                </button>
-              </div>
-            </div>
-          </>
+              </figure>
+            ))}
+
+            {draft.imageFiles.length < MAX_POST_IMAGES ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => inputRef.current?.click()}
+                className="grid aspect-square min-h-32 place-items-center rounded-lg border border-dashed border-orange-400 bg-orange-50/60 px-3 text-center text-sm font-bold text-orange-800 transition hover:border-orange-700 hover:bg-orange-100 disabled:opacity-50"
+              >
+                <span>
+                  <Plus aria-hidden="true" className="mx-auto mb-2 size-6" />
+                  Thêm ảnh
+                </span>
+              </button>
+            ) : null}
+          </div>
         ) : (
-          <div className="grid min-h-80 place-items-center px-6 py-10 text-center">
+          <div className="grid min-h-72 place-items-center px-6 py-10 text-center">
             <div>
               <span className="mx-auto grid size-16 place-items-center rounded-full bg-orange-100 text-orange-800 ring-8 ring-orange-50">
                 {isDragging ? (
@@ -202,30 +248,20 @@ export function PostImageField({
                 )}
               </span>
               <p className="mt-6 text-base font-bold text-stone-900">
-                {isDragging
-                  ? 'Thả ảnh vào khung tranh'
-                  : draft.imageFile
-                    ? 'Ảnh này chưa được hỗ trợ'
-                    : 'Kéo ảnh vào đây'}
+                {isDragging ? 'Thả ảnh vào đây' : 'Kéo một hoặc nhiều ảnh vào đây'}
               </p>
               <p className="mt-2 text-sm leading-6 text-stone-500">
-                hoặc chọn một tệp có sẵn trên thiết bị
+                Ảnh sẽ được giữ đúng thứ tự bạn chọn
               </p>
               <button
                 type="button"
                 disabled={busy}
-                onClick={openPicker}
+                onClick={() => inputRef.current?.click()}
                 className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-orange-700 px-5 text-sm font-bold text-white transition hover:bg-orange-800 disabled:cursor-wait disabled:opacity-50"
               >
                 <UploadCloud aria-hidden="true" className="size-4" />
                 Chọn ảnh từ máy
               </button>
-              {draft.imageFile ? (
-                <p className="mt-3 max-w-xs truncate text-xs text-stone-500">
-                  {draft.imageFile.name} ·{' '}
-                  {formatFileSize(draft.imageFile.size)}
-                </p>
-              ) : null}
             </div>
           </div>
         )}
