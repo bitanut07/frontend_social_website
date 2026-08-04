@@ -10,7 +10,7 @@ import {
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { supabase } from '../../lib/supabase'
+import { isAuthProviderEnabled, supabase } from '../../lib/supabase'
 
 type AuthMode = 'signIn' | 'signUp' | 'forgot' | 'reset'
 
@@ -151,16 +151,26 @@ export function AuthGate({ children }: AuthGateProps) {
   async function handleGoogleSignIn() {
     setSubmitting(true)
     setError('')
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    })
-    if (oauthError) {
-      setError(
-        'Google đang chờ cấu hình Client ID/Secret trong Supabase Dashboard.',
-      )
+
+    try {
+      const googleEnabled = await isAuthProviderEnabled('google')
+      if (!googleEnabled) {
+        setError(
+          'Đăng nhập Google chưa được bật trong Supabase (validation_failed: Unsupported provider: provider is not enabled).',
+        )
+        return
+      }
+
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+      if (oauthError) throw oauthError
+    } catch (oauthError) {
+      setError(messageFrom(oauthError))
+    } finally {
       setSubmitting(false)
     }
   }

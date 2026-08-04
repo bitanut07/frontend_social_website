@@ -9,6 +9,43 @@ export const isSupabaseConfigured = Boolean(
   configuredUrl && configuredPublishableKey,
 )
 
+type SupportedAuthProvider = 'google'
+
+const authProviderLabels: Record<SupportedAuthProvider, string> = {
+  google: 'Google',
+}
+
+export async function isAuthProviderEnabled(
+  provider: SupportedAuthProvider,
+): Promise<boolean> {
+  if (!configuredUrl || !configuredPublishableKey) {
+    throw new Error('Cấu hình Supabase chưa đầy đủ.')
+  }
+
+  const response = await fetch(
+    new URL('/auth/v1/settings', configuredUrl).toString(),
+    {
+      headers: {
+        apikey: configuredPublishableKey,
+      },
+    },
+  )
+
+  if (!response.ok) {
+    throw new Error(
+      `Không thể kiểm tra cấu hình đăng nhập ${authProviderLabels[provider]} (HTTP ${response.status}).`,
+    )
+  }
+
+  const settings: unknown = await response.json()
+  if (!settings || typeof settings !== 'object') return false
+
+  const external = (settings as { external?: unknown }).external
+  if (!external || typeof external !== 'object') return false
+
+  return (external as Record<string, unknown>)[provider] === true
+}
+
 export const supabase = createClient(
   configuredUrl || 'http://127.0.0.1:54321',
   configuredPublishableKey || 'local-publishable-key-not-configured',
